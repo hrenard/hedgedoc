@@ -11,6 +11,7 @@ import {
   InternalServerErrorException,
   Post,
   UploadedFile,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -20,6 +21,7 @@ import {
   MediaBackendError,
   NotInDBError,
 } from '../../../errors/errors';
+import { SessionGuard } from '../../../identity/session.guard';
 import { ConsoleLoggerService } from '../../../logger/console-logger.service';
 import { MediaUploadUrlDto } from '../../../media/media-upload-url.dto';
 import { MediaService } from '../../../media/media.service';
@@ -28,6 +30,7 @@ import { Note } from '../../../notes/note.entity';
 import { NotesService } from '../../../notes/notes.service';
 import { User } from '../../../users/user.entity';
 import { UsersService } from '../../../users/users.service';
+import { RequestUser } from '../../utils/request-user.decorator';
 
 @Controller('media')
 export class MediaController {
@@ -40,15 +43,15 @@ export class MediaController {
     this.logger.setContext(MediaController.name);
   }
 
+  @UseGuards(SessionGuard)
   @Post()
   @UseInterceptors(FileInterceptor('file'))
   @HttpCode(201)
   async uploadMedia(
     @UploadedFile() file: MulterFile,
     @Headers('HedgeDoc-Note') noteId: string,
+    @RequestUser() user: User,
   ): Promise<MediaUploadUrlDto> {
-    // ToDo: Get real userName
-    const user: User = await this.userService.getUserByUsername('hardcoded');
     try {
       // TODO: Move getting the Note object into a decorator
       const note: Note = await this.noteService.getNoteByIdOrAlias(noteId);

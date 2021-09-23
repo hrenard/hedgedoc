@@ -14,6 +14,7 @@ import {
   Param,
   Post,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 
 import {
@@ -22,6 +23,7 @@ import {
   NotInDBError,
 } from '../../../errors/errors';
 import { HistoryService } from '../../../history/history.service';
+import { SessionGuard } from '../../../identity/session.guard';
 import { ConsoleLoggerService } from '../../../logger/console-logger.service';
 import { MediaUploadDto } from '../../../media/media-upload.dto';
 import { MediaService } from '../../../media/media.service';
@@ -34,8 +36,10 @@ import { PermissionsService } from '../../../permissions/permissions.service';
 import { RevisionMetadataDto } from '../../../revisions/revision-metadata.dto';
 import { RevisionDto } from '../../../revisions/revision.dto';
 import { RevisionsService } from '../../../revisions/revisions.service';
+import { User } from '../../../users/user.entity';
 import { UsersService } from '../../../users/users.service';
 import { MarkdownBody } from '../../utils/markdownbody-decorator';
+import { RequestUser } from '../../utils/request-user.decorator';
 
 @Controller('notes')
 export class NotesController {
@@ -51,12 +55,12 @@ export class NotesController {
     this.logger.setContext(NotesController.name);
   }
 
+  @UseGuards(SessionGuard)
   @Get(':noteIdOrAlias')
   async getNote(
+    @RequestUser() user: User,
     @Param('noteIdOrAlias', GetNotePipe) note: Note,
   ): Promise<NoteDto> {
-    // ToDo: use actual user here
-    const user = await this.userService.getUserByUsername('hardcoded');
     if (!this.permissionsService.mayRead(user, note)) {
       throw new UnauthorizedException('Reading note denied!');
     }
@@ -64,13 +68,13 @@ export class NotesController {
     return await this.noteService.toNoteDto(note);
   }
 
+  @UseGuards(SessionGuard)
   @Get(':noteIdOrAlias/media')
   async getNotesMedia(
     @Param('noteIdOrAlias', GetNotePipe) note: Note,
+    @RequestUser() user: User,
   ): Promise<MediaUploadDto[]> {
     try {
-      // ToDo: use actual user here
-      const user = await this.userService.getUserByUsername('hardcoded');
       if (!this.permissionsService.mayRead(user, note)) {
         throw new UnauthorizedException('Reading note denied!');
       }
@@ -84,12 +88,13 @@ export class NotesController {
     }
   }
 
+  @UseGuards(SessionGuard)
   @Post()
   @HttpCode(201)
-  async createNote(@MarkdownBody() text: string): Promise<NoteDto> {
-    // ToDo: use actual user here
-    const user = await this.userService.getUserByUsername('hardcoded');
-    // ToDo: provide user for createNoteDto
+  async createNote(
+    @RequestUser() user: User,
+    @MarkdownBody() text: string,
+  ): Promise<NoteDto> {
     if (!this.permissionsService.mayCreate(user)) {
       throw new UnauthorizedException('Creating note denied!');
     }
@@ -99,14 +104,14 @@ export class NotesController {
     );
   }
 
+  @UseGuards(SessionGuard)
   @Post(':noteAlias')
   @HttpCode(201)
   async createNamedNote(
+    @RequestUser() user: User,
     @Param('noteAlias') noteAlias: string,
     @MarkdownBody() text: string,
   ): Promise<NoteDto> {
-    // ToDo: use actual user here
-    const user = await this.userService.getUserByUsername('hardcoded');
     if (!this.permissionsService.mayCreate(user)) {
       throw new UnauthorizedException('Creating note denied!');
     }
@@ -126,15 +131,15 @@ export class NotesController {
     }
   }
 
+  @UseGuards(SessionGuard)
   @Delete(':noteIdOrAlias')
   @HttpCode(204)
   async deleteNote(
+    @RequestUser() user: User,
     @Param('noteIdOrAlias', GetNotePipe) note: Note,
     @Body() noteMediaDeletionDto: NoteMediaDeletionDto,
   ): Promise<void> {
     try {
-      // ToDo: use actual user here
-      const user = await this.userService.getUserByUsername('hardcoded');
       if (!this.permissionsService.isOwner(user, note)) {
         throw new UnauthorizedException('Deleting note denied!');
       }
@@ -158,13 +163,13 @@ export class NotesController {
     }
   }
 
+  @UseGuards(SessionGuard)
   @Get(':noteIdOrAlias/revisions')
   async getNoteRevisions(
+    @RequestUser() user: User,
     @Param('noteIdOrAlias', GetNotePipe) note: Note,
   ): Promise<RevisionMetadataDto[]> {
     try {
-      // ToDo: use actual user here
-      const user = await this.userService.getUserByUsername('hardcoded');
       if (!this.permissionsService.mayRead(user, note)) {
         throw new UnauthorizedException('Reading note denied!');
       }
@@ -182,14 +187,14 @@ export class NotesController {
     }
   }
 
+  @UseGuards(SessionGuard)
   @Delete(':noteIdOrAlias/revisions')
   @HttpCode(204)
   async purgeNoteRevisions(
+    @RequestUser() user: User,
     @Param('noteIdOrAlias') noteIdOrAlias: string,
   ): Promise<void> {
     try {
-      // ToDo: use actual user here
-      const user = await this.userService.getUserByUsername('hardcoded');
       const note = await this.noteService.getNoteByIdOrAlias(noteIdOrAlias);
       if (!this.permissionsService.mayRead(user, note)) {
         throw new UnauthorizedException('Reading note denied!');
@@ -215,14 +220,14 @@ export class NotesController {
     }
   }
 
+  @UseGuards(SessionGuard)
   @Get(':noteIdOrAlias/revisions/:revisionId')
   async getNoteRevision(
+    @RequestUser() user: User,
     @Param('noteIdOrAlias', GetNotePipe) note: Note,
     @Param('revisionId') revisionId: number,
   ): Promise<RevisionDto> {
     try {
-      // ToDo: use actual user here
-      const user = await this.userService.getUserByUsername('hardcoded');
       if (!this.permissionsService.mayRead(user, note)) {
         throw new UnauthorizedException('Reading note denied!');
       }
